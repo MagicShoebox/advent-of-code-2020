@@ -14,17 +14,29 @@ class MainArgs(Tap):
 
 def main(args: MainArgs):
     with args.file.open('r') as file:
-        count = countPasswords(file)
-    print(count)
+        print(countPasswordsPart1(file))
+        file.seek(0)
+        print(countPasswordsPart2(file))
 
 
-def countPasswords(file: typing.TextIO) -> int:
-    linePattern = re.compile('^(?P<min>\d+)-(?P<max>\d+) (?P<letter>\w): (?P<password>\w+)$')
+def countPasswordsPart1(file: typing.TextIO) -> int:
+    linePattern = re.compile(r'^(?P<min>\d+)-(?P<max>\d+) (?P<letter>\w): (?P<password>\w+)$')
     # haha list comprehension go brrrrrr
     return sum(1
                for line in file
                if (match := linePattern.match(line))
-               and int(match.group('min')) <= match.group('password').count(match.group('letter')) <= int(match.group('max')))
+               and int(match.group('min')) <= match.group('password').count(match.group('letter')) <= int(
+        match.group('max')))
+
+
+def countPasswordsPart2(file: typing.TextIO) -> int:
+    linePattern = re.compile(r'^(?P<index1>\d+)-(?P<index2>\d+) (?P<letter>\w): (?P<password>\w+)$')
+    return sum(1
+               for line in file
+               if (match := linePattern.match(line))
+               and ((password := match.group('password'))[int(match.group('index1')) - 1] == (
+        letter := match.group('letter')))
+               ^ (password[int(match.group('index2')) - 1] == letter))
 
 
 if __name__ == '__main__':
