@@ -1,3 +1,4 @@
+import re
 import pathlib
 import typing
 from typing import Callable
@@ -14,11 +15,24 @@ class MainArgs(Tap):
     def configure(self):
         self.add_argument('file', type=pathlib.Path)
 
+
 def part1Valid(record: dict):
     return {'byr', 'iyr', 'eyr', 'hgt', 'hcl', 'ecl', 'pid'}.issubset(record)
 
+
 def part2Valid(record: dict):
-    return True
+    fields = {
+        'byr': lambda x: 1920 <= int(x) <= 2002,
+        'iyr': lambda x: 2010 <= int(x) <= 2020,
+        'eyr': lambda x: 2020 <= int(x) <= 2030,
+        'hgt': lambda x: x[-2:] == 'cm' and 150 <= int(x[:-2]) <= 193
+                         or x[-2:] == 'in' and 59 <= int(x[:-2]) <= 76,
+        'hcl': lambda x: re.match('^#[0-9a-f]{6}$', x),
+        'ecl': lambda x: x in {'amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth'},
+        'pid': lambda x: re.match('^\\d{9}$', x)
+    }
+    return all(key in record and rule(record[key]) for key, rule in fields.items())
+
 
 def main(args: MainArgs):
     with args.file.open('r') as file:
