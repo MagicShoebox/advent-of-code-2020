@@ -21,7 +21,7 @@ def main(args: MainArgs):
 
 def countPasswordsPart1(file: typing.TextIO) -> int:
     linePattern = re.compile(r'^(?P<min>\d+)-(?P<max>\d+) (?P<letter>\w): (?P<password>\w+)$')
-    # haha list comprehension go brrrrrr
+    # haha generator expression go brrrrrr
     return sum(1
                for line in file
                if (match := linePattern.match(line))
