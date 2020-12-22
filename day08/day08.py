@@ -1,6 +1,7 @@
 import pathlib
 import re
 import typing
+from collections import OrderedDict
 from typing import List
 
 from tap import Tap
@@ -16,12 +17,23 @@ class MainArgs(Tap):
 def main(args: MainArgs):
     with args.file.open('r') as file:
         instructions = readInstructions(file)
-    print(stopOnLoop(instructions))
+    success, accumulator, executionPath = execute(instructions)
+    print(accumulator)
+    for bugCandidatePointer in reversed(executionPath):
+        bugCandidate = instructions[bugCandidatePointer]
+        if bugCandidate[0] == 'acc':
+            continue
+        instructions[bugCandidatePointer] = ('jmp' if bugCandidate[0] == 'nop' else 'nop', bugCandidate[1])
+        success, accumulator, _ = execute(instructions)
+        if success:
+            break
+        instructions[bugCandidatePointer] = bugCandidate
+    print(accumulator)
 
 
-def stopOnLoop(instructions: List[tuple[str, int]]) -> int:
-    accumulator = 0
+def execute(instructions: List[tuple[str, int]]) -> tuple[bool, int, OrderedDict[int, None]]:
     instructionPointer = 0
+    accumulator = 0
 
     def acc(x):
         nonlocal accumulator, instructionPointer
@@ -42,12 +54,12 @@ def stopOnLoop(instructions: List[tuple[str, int]]) -> int:
         'nop': nop
     }
 
-    loopDetection = set()
-    while instructionPointer not in loopDetection:
-        loopDetection.add(instructionPointer)
+    executionPath = OrderedDict()
+    while instructionPointer not in executionPath and instructionPointer < len(instructions):
+        executionPath[instructionPointer] = None
         instruction, argument = instructions[instructionPointer]
         cpu[instruction](argument)
-    return accumulator
+    return instructionPointer == len(instructions), accumulator, executionPath
 
 
 def readInstructions(file: typing.TextIO) -> List[tuple[str, int]]:
