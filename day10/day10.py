@@ -39,8 +39,8 @@ def countCompositions(target: int, maxPart: int) -> int:
     # Hope you like combinatorics
     # https://math.stackexchange.com/a/21779/821687
     # t = target, n = parts, m = max part
-    # Generating function: (x + x^2 + ... + x^m)^n
-    # After identities, x^n \sum_{k=0}^n(-1)^k(n \choose k)x^{mk} \sum_{r=0}^\inf(r + n - 1 \choose r)x^r
+    # Generating function: $(x + x^2 + \cdots + x^m)^n$
+    # After identities, $x^n\ \sum_{k=0}^n(-1)^k{n \choose k}x^{mk}\ \sum_{r=0}^\infty{r + n - 1 \choose r}x^r$
     # We want the coefficients x^t, so t=n+mk+r, n=1..target, k=0..floor((t-n)/m), r=t-n-mk
     compositions = 0
     for n in range(1, target + 1):
