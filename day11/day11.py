@@ -18,11 +18,13 @@ class MainArgs(Tap):
 def main(args: MainArgs):
     with args.file.open('r') as file:
         ferry = np.genfromtxt(file, dtype=str, delimiter=1)
-    part1 = runUntilStable(ferry, args.empty, args.occupied)
-    print(np.count_nonzero(part1 == args.occupied))
+    part1Result = part1(ferry, args.empty, args.occupied)
+    print(np.count_nonzero(part1Result == args.occupied))
+    part2Result = part2(ferry, args.empty, args.occupied)
+    print(np.count_nonzero(part2Result == args.occupied))
 
 
-def runUntilStable(ferry: np.ndarray, empty: str, occupied: str) -> np.ndarray:
+def part1(ferry: np.ndarray, empty: str, occupied: str) -> np.ndarray:
     update = np.array(['x'])
     while (update != '').any():
         # https://stackoverflow.com/a/53127289/3491874
@@ -39,6 +41,30 @@ def runUntilStable(ferry: np.ndarray, empty: str, occupied: str) -> np.ndarray:
         ], 0)
         update = np.where(np.logical_and(ferry == empty, neighbors == 0), occupied, '')
         update = np.where(np.logical_and(ferry == occupied, neighbors >= 4), empty, update)
+        ferry = np.where(update != '', update, ferry)
+    return ferry
+
+
+def part2(ferry: np.ndarray, empty: str, occupied: str) -> np.ndarray:
+    addTuples = lambda x, y: tuple(sum(i) for i in zip(x, y))
+    update = np.array(['x'])
+    while (update != '').any():
+        neighbors = np.zeros(ferry.shape, dtype=int)
+        for index, value in np.ndenumerate(ferry):
+            if value == empty or value == occupied:
+                n = 0
+                for direction in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]:
+                    position = addTuples(index, direction)
+                    while all(0 <= a < b for a, b in zip(position, ferry.shape)):
+                        if ferry[position] == empty:
+                            break
+                        if ferry[position] == occupied:
+                            n += 1
+                            break
+                        position = addTuples(position, direction)
+                neighbors[index] = n
+        update = np.where(np.logical_and(ferry == empty, neighbors == 0), occupied, '')
+        update = np.where(np.logical_and(ferry == occupied, neighbors >= 5), empty, update)
         ferry = np.where(update != '', update, ferry)
     return ferry
 
