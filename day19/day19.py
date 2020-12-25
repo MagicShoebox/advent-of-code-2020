@@ -2,7 +2,6 @@ import pathlib
 import re
 from functools import reduce
 from typing import TextIO
-from typing import Union
 
 from tap import Tap
 
@@ -19,8 +18,9 @@ def main(args: MainArgs):
         rules, messages = readFile(file)
 
     print(sum(1
-              for message in messages
-              if rules[0](message) == ''))
+              for result in (rules[0]({message})
+                             for message in messages)
+              if '' in result))
 
 
 def readFile(file: TextIO):
@@ -34,24 +34,22 @@ def readFile(file: TextIO):
         id = int(match.group('id'))
         line = match.group('rule')
         if (match := exactPattern.match(line)):
-            def exact(message: str, letter=match.group('letter')) -> Union[str, bool]:
-                if len(message) >= len(letter) and message[:len(letter)] == letter:
-                    return message[len(letter):]
-                return False
+            def exact(messages: set[str], letter=match.group('letter')) -> set[str]:
+                return {message[len(letter):]
+                        for message in messages
+                        if len(message) >= len(letter) and message[:len(letter)] == letter}
 
             rules[id] = exact
         else:
-            def nested(message: str, cases=tuple([int(id) for id in branch.split()] for branch in line.split('|'))) \
-                    -> Union[str, bool]:
+            def nested(messages: set[str],
+                       cases=tuple([int(id) for id in branch.split()] for branch in line.split('|'))) \
+                    -> set[str]:
                 cases = (reduce(
-                    lambda m, f: False if m is False else f(m),
-                    (rules[id] for id in case),
-                    message)
+                    lambda m, f: m if len(m) == 0 else f(m),
+                    (rules[c] for c in case),
+                    messages)
                     for case in cases)
-                result = [c for c in cases if c is not False]
-                if result:
-                    return result[0]
-                return False
+                return {r for c in cases for r in c}
 
             rules[id] = nested
 
