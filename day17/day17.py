@@ -6,8 +6,8 @@ from typing import Union
 import numpy as np
 from tap import Tap
 
-ORIGIN = (10, 10, 10)
-WORLD = (21, 21, 21)
+ORIGIN = (10, 10, 10, 10)
+WORLD = (21, 21, 21, 21)
 
 
 class MainArgs(Tap):
