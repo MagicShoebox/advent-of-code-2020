@@ -1,11 +1,15 @@
 import pathlib
 import re
 from typing import Iterable
+from typing import List
 from typing import TextIO
 from typing import Union
 
 import numpy as np
 from tap import Tap
+
+TILE = tuple[np.ndarray, np.ndarray]
+TILE_EDGE = tuple[np.ndarray, np.ndarray, slice]
 
 FLIP = slice(None, None, -1)  # For convenience, not in SLICES
 
@@ -18,7 +22,6 @@ BOTTOM_FLIP = (BOTTOM, FLIP)
 LEFT = (slice(None), slice(None, 1))
 LEFT_FLIP = (FLIP, LEFT[1])
 SLICES = [TOP, TOP_FLIP, RIGHT, RIGHT_FLIP, BOTTOM, BOTTOM_FLIP, LEFT, LEFT_FLIP]
-TILE_EDGE = tuple[np.ndarray, np.ndarray, slice]
 
 
 class MainArgs(Tap):
@@ -32,33 +35,44 @@ def main(args: MainArgs):
     with args.file.open('r') as file:
         unmatched = [x for x in readTiles(file)]
     unmatched = match(unmatched)
-    print(unmatched)
+    while len(unmatched) > 1:
+        toBreak = None
+        for i in range(len(unmatched)):
+            if unmatched[i][0].size > 1:
+                toBreak = unmatched.pop(i)
+                break
+        tiles = breakup(toBreak)
+        unmatched.extend(tiles)
+        unmatched = match(unmatched)
+
+    ids, array = unmatched[0]
+    # .item() needed to convert from int32->int and avoid overflow
+    print(ids[0, 0].item() * ids[0, -1].item() * ids[-1, 0].item() * ids[-1, -1].item())
 
 
 def edge(array: np.ndarray, slice: slice) -> str:
     return ''.join(array[slice].squeeze())
 
 
-def match(unmatched: Iterable[tuple[np.ndarray, np.ndarray]]) -> Iterable[tuple[np.ndarray, np.ndarray]]:
-    matched = []
+def match(unmatched: List[TILE]) -> List[TILE]:
     edges: dict[str, TILE_EDGE] = {}
-    leftover = []
-    for id, array in unmatched:
+    while unmatched:
+        id, array = unmatched.pop(0)
         if match := findMatch(edges, array):
             slice, match = match
-            match_id, match_array, _ = match
-            leftover.remove(match_id)
+            _, match_array, _ = match
             for s in SLICES:
-                del edges[edge(match_array, s)]
-            matched.append(stitch((id, array, slice), match))
+                e = edge(match_array, s)
+                del edges[e]
+            unmatched.append(stitch((id, array, slice), match))
         else:
-            leftover.append(id)
             for s in SLICES:
                 e = edge(array, s)
                 edges[e] = id, array, s
-    if leftover:
-        raise ValueError
-    return matched
+
+    # Reassemble the remaining piece(s) from their TILE_EDGEs.
+    # SLICES[0] is arbitrary, just needs to be consistent so we don't duplicate tiles
+    return [(id, array) for id, array, slice in edges.values() if slice == SLICES[0]]
 
 
 def findMatch(edges: dict[str, TILE_EDGE], array: np.ndarray) -> Union[tuple[slice, TILE_EDGE], None]:
@@ -69,7 +83,7 @@ def findMatch(edges: dict[str, TILE_EDGE], array: np.ndarray) -> Union[tuple[sli
     return None
 
 
-def stitch(tile1: TILE_EDGE, tile2: TILE_EDGE) -> tuple[np.ndarray, np.ndarray]:
+def stitch(tile1: TILE_EDGE, tile2: TILE_EDGE) -> TILE:
     # To simplify stitching, we'll manipulate the tiles first
 
     # Side note: if slice were hashable, this would be much cleaner as a dictionary of lambdas
@@ -127,7 +141,18 @@ def stitch(tile1: TILE_EDGE, tile2: TILE_EDGE) -> tuple[np.ndarray, np.ndarray]:
     return np.concatenate((tile_1_id, tile_2_id)), np.concatenate((tile_1_array, tile_2_array))
 
 
-def readTiles(file: TextIO) -> Iterable[tuple[np.ndarray, np.ndarray]]:
+def breakup(tile: TILE) -> Iterable[TILE]:
+    ids, arrays = tile
+    height, width = arrays.shape[0] // ids.shape[0], arrays.shape[1] // ids.shape[1]
+    tiles = [(id, tile)
+             for id, tile
+             in zip(
+            (y for x in np.split(ids, ids.shape[0], 0) for y in np.split(x, ids.shape[1], 1)),
+            (y for x in np.split(arrays, ids.shape[0], 0) for y in np.split(x, ids.shape[1], 1)))]
+    return tiles
+
+
+def readTiles(file: TextIO) -> Iterable[TILE]:
     tilePattern = re.compile(r'^Tile (?P<id>\d+):\s*$')
 
     while match := tilePattern.match(next(file, '')):
@@ -141,5 +166,5 @@ def readTiles(file: TextIO) -> Iterable[tuple[np.ndarray, np.ndarray]]:
 
 
 if __name__ == '__main__':
-    parser = MainArgs(description='Combine tiles into larger whole')
+    parser = MainArgs(description='Solve a jigsaw puzzle')
     main(parser.parse_args())
