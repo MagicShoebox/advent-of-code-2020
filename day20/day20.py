@@ -33,7 +33,46 @@ class MainArgs(Tap):
 
 def main(args: MainArgs):
     with args.file.open('r') as file:
-        unmatched = [x for x in readTiles(file)]
+        unmatched = list(readTiles(file))
+    ids, image = solve(unmatched)
+    # .item() needed to convert from int32->int and avoid overflow
+    print(ids[0, 0].item() * ids[0, -1].item() * ids[-1, 0].item() * ids[-1, -1].item())
+
+    image = removeBorders(ids.shape, image)
+
+    monster = np.array([
+        list('                  # '),
+        list('#    ##    ##    ###'),
+        list(' #  #  #  #  #  #   ')
+    ])
+
+    image = replaceMonsters(image, monster)
+    print(np.count_nonzero(image == '#'))
+
+def replaceMonsters(image: np.ndarray, monster: np.ndarray) -> np.ndarray:
+    monsterSize = np.count_nonzero(monster)
+
+    for _ in range(2):
+        for _ in range(4):
+            for x in range(image.shape[0] - monster.shape[0] + 1):
+                for y in range(image.shape[1] - monster.shape[1] + 1):
+                    window = slice(x, x + monster.shape[0]), slice(y, y + monster.shape[1])
+                    comparison = image[window] == monster
+                    if np.count_nonzero(comparison) == monsterSize:
+                        image[window] = np.where(comparison, 'O', image[window])
+            monster = np.rot90(monster)
+        monster = np.fliplr(monster)
+    return image
+
+
+def removeBorders(shape: tuple, image: np.ndarray):
+    height, width = image.shape[0] // shape[0], image.shape[1] // shape[1]
+    image = np.delete(image, [y for x in range(shape[0]) for y in (height * x, height * x + height - 1)], 0)
+    image = np.delete(image, [y for x in range(shape[1]) for y in (width * x, width * x + width - 1)], 1)
+    return image
+
+
+def solve(unmatched: List[TILE]) -> TILE:
     unmatched = match(unmatched)
     while len(unmatched) > 1:
         toBreak = None
@@ -44,10 +83,7 @@ def main(args: MainArgs):
         tiles = breakup(toBreak)
         unmatched.extend(tiles)
         unmatched = match(unmatched)
-
-    ids, array = unmatched[0]
-    # .item() needed to convert from int32->int and avoid overflow
-    print(ids[0, 0].item() * ids[0, -1].item() * ids[-1, 0].item() * ids[-1, -1].item())
+    return unmatched[0]
 
 
 def edge(array: np.ndarray, slice: slice) -> str:
@@ -143,13 +179,9 @@ def stitch(tile1: TILE_EDGE, tile2: TILE_EDGE) -> TILE:
 
 def breakup(tile: TILE) -> Iterable[TILE]:
     ids, arrays = tile
-    height, width = arrays.shape[0] // ids.shape[0], arrays.shape[1] // ids.shape[1]
-    tiles = [(id, tile)
-             for id, tile
-             in zip(
-            (y for x in np.split(ids, ids.shape[0], 0) for y in np.split(x, ids.shape[1], 1)),
-            (y for x in np.split(arrays, ids.shape[0], 0) for y in np.split(x, ids.shape[1], 1)))]
-    return tiles
+    return list(zip(
+        (y for x in np.split(ids, ids.shape[0], 0) for y in np.split(x, ids.shape[1], 1)),
+        (y for x in np.split(arrays, ids.shape[0], 0) for y in np.split(x, ids.shape[1], 1))))
 
 
 def readTiles(file: TextIO) -> Iterable[TILE]:
