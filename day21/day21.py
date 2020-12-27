@@ -33,6 +33,7 @@ def main(args: MainArgs):
     effects, causes = buildSources(allIngredients, allAllergens, foods)
     solve(effects, causes)
     print(sum(1 for ingredients, allergens in foods for ingredient in ingredients if len(effects[ingredient]) == 0))
+    print(','.join(ingredient for allergen in sorted(causes) for ingredient in causes[allergen]))
 
 
 def buildSources(allIngredients: set[Ingredient], allAllergens: set[Allergen], foods: Iterable[Food]) \
