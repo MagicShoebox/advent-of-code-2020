@@ -9,7 +9,6 @@ from tap import Tap
 Ingredient = NewType('Ingredient', str)
 Allergen = NewType('Allergen', str)
 Food = tuple[set[Ingredient], set[Allergen]]
-Effects = dict[Ingredient, set[Allergen]]
 Causes = dict[Allergen, set[Ingredient]]
 
 
@@ -30,36 +29,33 @@ def main(args: MainArgs):
             allAllergens |= allergens
             foods.append((ingredients, allergens))
 
-    effects, causes = buildSources(allIngredients, allAllergens, foods)
-    solve(effects, causes)
-    print(sum(1 for ingredients, allergens in foods for ingredient in ingredients if len(effects[ingredient]) == 0))
+    causes = buildSources(allIngredients, allAllergens, foods)
+    safe, causes = solve(allIngredients, causes)
+    print(sum(1 for ingredients, allergens in foods for ingredient in ingredients if ingredient in safe))
     print(','.join(ingredient for allergen in sorted(causes) for ingredient in causes[allergen]))
 
 
-def buildSources(allIngredients: set[Ingredient], allAllergens: set[Allergen], foods: Iterable[Food]) \
-        -> tuple[Effects, Causes]:
-    effects = {i: allAllergens.copy() for i in allIngredients}
+def buildSources(allIngredients: set[Ingredient], allAllergens: set[Allergen], foods: Iterable[Food]) -> Causes:
     causes = {a: allIngredients.copy() for a in allAllergens}
     for ingredients, allergens in foods:
         for allergen in allergens:
             causes[allergen] &= ingredients
-    return effects, causes
+    return causes
 
 
-def solve(effects: Effects, causes: Causes) -> None:
+def solve(allIngredients: set[Ingredient], causes: Causes) -> tuple[set[Ingredient], Causes]:
+    safe = allIngredients.copy()
     solved = [k for k, v in causes.items() if len(v) == 1]
     for effect in solved:
         [cause] = causes[effect]
-        for ingredient, allergens in effects.items():
-            if ingredient == cause:
-                continue
-            allergens.discard(effect)
+        safe.discard(cause)
         for allergen, ingredients in causes.items():
             if allergen == effect:
                 continue
             ingredients.discard(cause)
             if len(ingredients) == 1 and allergen not in solved:
                 solved.append(allergen)
+    return safe, causes
 
 
 def readFoods(file: TextIO) -> Iterable[Food]:
