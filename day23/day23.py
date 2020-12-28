@@ -1,7 +1,6 @@
 import pathlib
 from typing import NewType
 from typing import TextIO
-
 from tap import Tap
 
 Cup = NewType('Cup', int)
@@ -20,10 +19,10 @@ def main(args: MainArgs):
     part1 = cupGame(cups[:], 100)
     print(''.join(str(part1[(part1.index(Cup(1)) + i) % len(part1)]) for i in range(1, len(part1))))
 
-    cups = cups + [Cup(i) for i in range(max(cups) + 1, 10 ** 6 + 1)]
-    part2 = cupGame(cups, 10 ** 7)
-    index = cups.index(Cup(1))
-    print(cups[index + 1] * cups[index + 2])
+    # cups = cups + [Cup(i) for i in range(max(cups) + 1, 10 ** 6 + 1)]
+    # part2 = cupGame(cups, 10 ** 7)
+    # index = cups.index(Cup(1))
+    # print(cups[index + 1] * cups[index + 2])
 
 
 def cupGame(cups: list[Cup], moves: int):
