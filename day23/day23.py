@@ -21,7 +21,7 @@ class Cup:
 def main(args: MainArgs):
     with args.file.open('r') as file:
         cups, minCup, maxCup = readCups(file)
-    part1 = cupGame(cups, 100, minCup, maxCup)
+    cups = cupGame(cups, 100, minCup, maxCup)
     cups = find(cups, 1)
     current = cups.next
     solution = ''
@@ -30,15 +30,15 @@ def main(args: MainArgs):
         current = current.next
     print(solution)
 
-    # cups = cups + [Cup(i) for i in range(max(cups) + 1, 10 ** 6 + 1)]
-    # part2 = cupGame(cups, 10 ** 7)
-    # index = cups.index(Cup(1))
-    # print(cups[index + 1] * cups[index + 2])
+    with args.file.open('r') as file:
+        cups, minCup, maxCup = readCups(file, 10 ** 6)
+    cups = cupGame(cups, 10 ** 7, minCup, maxCup)
+    cups = find(cups, 1)
+    print(cups.next.label * cups.next.next.label)
 
 
-def cupGame(cups: Cup, moves: int, minCup: int, maxCup: int):
-    labels = {}
-    labels[cups.label] = cups
+def cupGame(cups: Cup, moves: int, minCup: int, maxCup: int) -> Cup:
+    labels = {cups.label: cups}
     current = cups.next
     while current != cups:
         labels[current.label] = current
@@ -68,21 +68,30 @@ def find(current: Cup, target: int) -> Cup:
     return current
 
 
-def readCups(file: TextIO) -> tuple[Cup, int, int]:
+def readCups(file: TextIO, maxCup: int = None) -> tuple[Cup, int, int]:
     tail = None
     minCup = 10 ** 4
-    maxCup = -1
+    maxRead = -1
     for digit in reversed(list(next(file).rstrip())):
         label = int(digit)
-        if label > maxCup:
-            maxCup = label
+        if label > maxRead:
+            maxRead = label
         if label < minCup:
             minCup = label
         tail = Cup(label, tail)
     head = tail
     while tail.next is not None:
         tail = tail.next
-    tail.next = head
+
+    if maxCup is None:
+        maxCup = maxRead
+        tail.next = head
+    else:
+        newTail = Cup(maxCup, head)
+        for label in range(maxCup - 1, maxRead, -1):
+            newTail = Cup(label, newTail)
+        tail.next = newTail
+
     return head, minCup, maxCup
 
 
