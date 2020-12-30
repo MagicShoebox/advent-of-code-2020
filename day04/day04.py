@@ -1,8 +1,8 @@
-import re
 import pathlib
+import re
 import typing
+from itertools import takewhile
 from typing import Callable
-from typing import List
 
 from tap import Tap
 
@@ -42,29 +42,10 @@ def main(args: MainArgs):
 
 
 def countRecords(file: typing.TextIO, isValid: VALIDATION) -> int:
-    return sum(1
-               for record
-               in (dict(field.split(':')
-                        for line
-                        in lines
-                        for field
-                        in line.split())
-                   for lines
-                   in readRecordLines(file))
-               if isValid(record))
-
-
-def readRecordLines(file: typing.TextIO) -> List[str]:
-    lines = []
-    for line in file:
-        line = line.rstrip()
-        if len(line) > 0:
-            lines.append(line)
-        else:
-            yield lines
-            lines = []
-    if len(lines) > 0:
-        yield lines
+    stripped = map(str.rstrip, file)
+    blocks = ([line, *takewhile(bool, stripped)] for line in stripped)
+    records = (dict(field.split(':') for line in block for field in line.split()) for block in blocks)
+    return sum(1 for record in records if isValid(record))
 
 
 if __name__ == '__main__':

@@ -1,7 +1,5 @@
 import pathlib
-import typing
-from typing import Iterable
-from typing import List
+from itertools import takewhile
 
 from tap import Tap
 
@@ -15,28 +13,11 @@ class MainArgs(Tap):
 
 def main(args: MainArgs):
     with args.file.open('r') as file:
-        records = readRecords(file)
+        stripped = map(str.rstrip, file)
+        blocks = ([line, *takewhile(bool, stripped)] for line in stripped)
+        records = [[set(line) for line in block] for block in blocks]
         print(sum(len(set.union(*record)) for record in records))
         print(sum(len(set.intersection(*record)) for record in records))
-
-
-def readRecords(file: typing.TextIO) -> Iterable[Iterable[set[str]]]:
-    return [[set(answer for answer in line)
-             for line in lines]
-            for lines in readRecordLines(file)]
-
-
-def readRecordLines(file: typing.TextIO) -> List[str]:
-    lines = []
-    for line in file:
-        line = line.rstrip()
-        if len(line) > 0:
-            lines.append(line)
-        else:
-            yield lines
-            lines = []
-    if len(lines) > 0:
-        yield lines
 
 
 if __name__ == '__main__':

@@ -49,9 +49,7 @@ def readFile(file: TextIO):
     rulePattern = \
         re.compile(r'^(?P<field>[\w ]+): (?P<lower1>\d+)-(?P<upper1>\d+) or (?P<lower2>\d+)-(?P<upper2>\d+)\s*$')
 
-    for line in file:
-        if not (match := rulePattern.match(line)):
-            break
+    while match := rulePattern.match(next(file, '')):
         lower1 = int(match.group('lower1'))
         upper1 = int(match.group('upper1'))
         lower2 = int(match.group('lower2'))
@@ -65,10 +63,8 @@ def readFile(file: TextIO):
     myTicket = [int(x) for x in next(file).split(',')]
     next(file)  # Blank line
 
-    tickets = []
     next(file)  # Header
-    for line in file:
-        tickets.append([int(x) for x in line.split(',')])
+    tickets = [[int(x) for x in line.split(',')] for line in file]
 
     return rules, myTicket, tickets
 

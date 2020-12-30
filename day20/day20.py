@@ -1,12 +1,12 @@
+import numpy as np
 import pathlib
 import re
+from itertools import takewhile
+from tap import Tap
 from typing import Iterable
 from typing import List
 from typing import TextIO
 from typing import Union
-
-import numpy as np
-from tap import Tap
 
 TILE = tuple[np.ndarray, np.ndarray]
 TILE_EDGE = tuple[np.ndarray, np.ndarray, slice]
@@ -48,6 +48,7 @@ def main(args: MainArgs):
 
     image = replaceMonsters(image, monster)
     print(np.count_nonzero(image == '#'))
+
 
 def replaceMonsters(image: np.ndarray, monster: np.ndarray) -> np.ndarray:
     monsterSize = np.count_nonzero(monster)
@@ -188,13 +189,9 @@ def readTiles(file: TextIO) -> Iterable[TILE]:
     tilePattern = re.compile(r'^Tile (?P<id>\d+):\s*$')
 
     while match := tilePattern.match(next(file, '')):
-        buffer = []
-        for line in file:
-            line = line.rstrip()
-            if not line:
-                break
-            buffer.append(list(line))
-        yield np.array([[int(match.group('id'))]]), np.array(buffer)
+        ids = np.array([[int(match.group('id'))]])
+        array = np.array(list(takewhile(bool, (list(line.rstrip()) for line in file))))
+        yield ids, array
 
 
 if __name__ == '__main__':
